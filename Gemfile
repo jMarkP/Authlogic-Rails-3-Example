@@ -34,3 +34,5 @@ group :test do
   gem 'database_cleaner', '0.6.7'
   gem 'factory_girl_rails', '~> 1.1'
 end
+
+gem 'authlogic'

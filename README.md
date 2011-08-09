@@ -33,6 +33,8 @@ Add the following to `./Gemfile`:
   	  gem 'factory_girl_rails', '~> 1.1'
 	end
 	
+	gem 'authlogic'
+	
 And run the following in the app's root directory:
 
     $ bundle install
@@ -66,3 +68,40 @@ And this as `./features/support/factories.rb`:
 	end
 	
 Cucumber still fails, but we're getting there.
+
+    $ cucumber
+    Using the default profile...
+	uninitialized constant User (NameError)
+
+## 3. Adding the basic user model
+
+Crack out the rails generator to make us a User model to satisfy cucumber:
+
+    $ rails generate model User login:string crypted_password:string \
+    password_salt:string persistence_token:string
+
+And rake the db:migration:
+
+    $ rake db:migrate db:test:prepare
+
+Only one change needed to the User model, to tell Authlogic to handle it:
+
+    class User < ActiveRecord::Base
+	  acts_as_authentic
+	end
+	
+What does cucumber tell us to do now?
+
+    $ cucumber
+	Using the default profile...
+	Feature: Testing Authlogic
+
+	  Scenario: Logging in                             # features/authlogic.feature:2
+	    Given the following user exists:               # factory_girl-2.0.3/lib/factory_girl/step_definitions.rb:98
+	      | login | password | password_confirmation |
+	      | Tony  | pass     | pass                  |
+	    When I log in as "Tony" with password "pass"   # features/authlogic.feature:6
+	      Undefined step: "I log in as "Tony" with password "pass"" (Cucumber::Undefined)
+	      features/authlogic.feature:6:in `When I log in as "Tony" with password "pass"'
+	
+Cool, the first step passes. But how do we log in?
