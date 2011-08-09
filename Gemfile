@@ -28,3 +28,9 @@ gem 'jquery-rails'
 # To use debugger
 # gem 'ruby-debug'
 
+group :test do
+  gem 'cucumber-rails', '1.0.1'
+  gem 'rspec-rails', '2.6.1'
+  gem 'database_cleaner', '0.6.7'
+  gem 'factory_girl_rails', '~> 1.1'
+end
