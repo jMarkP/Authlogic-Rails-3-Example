@@ -20,3 +20,21 @@ and it does its stuff.
 
 ## 1. Setup basic Rails app
 
+Run up rails to generate your new app (skip if you are adding to an existing app. Obviously).
+
+    $ rails new authlogic_rails3
+	      create  
+	      create  README
+	      create  Rakefile
+	      create  config.ru
+	      create  .gitignore
+	      create  Gemfile
+	      create  app
+	      create  app/assets/images/rails.png
+    ...
+	      create  vendor/assets/stylesheets
+	      create  vendor/assets/stylesheets/.gitkeep
+	      create  vendor/plugins
+	      create  vendor/plugins/.gitkeep
+	         run  bundle install
+
