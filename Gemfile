@@ -36,3 +36,4 @@ group :test do
 end
 
 gem 'authlogic'
+gem 'rails3-generators' # for the authlogic generators

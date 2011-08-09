@@ -34,6 +34,7 @@ Add the following to `./Gemfile`:
 	end
 	
 	gem 'authlogic'
+	gem 'rails3-generators' # for the authlogic generators
 	
 And run the following in the app's root directory:
 
@@ -105,3 +106,27 @@ What does cucumber tell us to do now?
 	      features/authlogic.feature:6:in `When I log in as "Tony" with password "pass"'
 	
 Cool, the first step passes. But how do we log in?
+
+## 4. User Session model
+
+We'll be generating a new model, UserSession, which will control sessions of users, so let's add the first missing cucumber step definition to test this. Create this in `./features/step_definitions/authlogic_steps.rb`:
+
+    When /^I log in as "([^"]*)" with password "([^"]*)"$/ do |login, password|
+	  UserSession.create(:login => login, :password => password, :remember_me => true)
+	end
+	
+Cucumber tells us we need a UserSession class. So let's create it!
+
+Generate a new model for UserSession using the Authlogic generator:
+
+    $ rails generate authlogic:session UserSession
+	
+Now cucumber tells us:
+
+    You must activate the Authlogic::Session::Base.controller with a controller object before creating objects (Authlogic::Session::Activation::NotActivatedError)
+	
+OK, so we need a session controller.
+
+## 5. Session controller
+
+**TODO**
