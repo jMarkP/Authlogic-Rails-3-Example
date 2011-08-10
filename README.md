@@ -152,8 +152,123 @@ Now the first cucumber feature passes! Job done.
 
 This means the model layer is now working as expected. But we'd like to be able to actually *use* this new authentication system in the Rails app. So we should test the controller and view layers as well...
 
-## 5. Session controller
+## 5. User interface integration testing
 
+### Separating scenario types
+
+First of all I'm going to mark our existing scenario with a `@model` tag so that I can tell cucumber to do the manual Authlogic activation for scenarios tagged `@model`:
+
+**authlogic.feature**
+    @model
+	Scenario: Logging in
+		Given the following user exists:
+			| login    | password   | password_confirmation |
+			| Tony     | pass       | pass                  |
+		When I log in as "Tony" with password "pass"
+		Then the current user's login should be "Tony"
+		
+**authlogic_steps.rb**
+	require "authlogic/test_case" 
+	Before('@model') do 
+	  activate_authlogic 
+	end
+	...
+	
+### A new scenario
+	
+Now let's specify a new scenario for creating a new user through the user interface:
+
+    Scenario: Signing up
+		Given there are no users
+		And I am on the new user page
+		And I fill in the following:
+			| Login		            | Sally      |
+			| Password              | newpass    |
+			| Password confirmation | newpass    |
+		When I press "Create"
+		Then a new User account for "Sally" should be created
+		And the current user's login should be "Sally"
+	
+Cucumber tells us it doesn't know how to ensure there are no users. Let's tell it:
+
+    Given /^there are no users$/ do
+	  User.all.count.should == 0
+	end
+	
+### Routes
+
+Now we're told:
+
+    Can't find mapping from "the new user page" to a path.
+	      Now, go and add a mapping in /Users/development/dev/ruby/scratch/authlogoic_rails3/features/support/paths.rb (RuntimeError)
+	
+We need a route to a new user page. Let's create a user controller:
+
+    $ rails generate controller users	
+	
+And tell Rails about it in `./config/routes.rb`:
+
+    AuthlogoicRails3::Application.routes.draw do
+	  resources :users
+	end
+	
+Now show yourself that the new user route is available:
+
+    $ rake routes
+	    users GET    /users(.:format)          {:action=>"index", :controller=>"users"}
+	          POST   /users(.:format)          {:action=>"create", :controller=>"users"}
+	 new_user GET    /users/new(.:format)      {:action=>"new", :controller=>"users"}
+	edit_user GET    /users/:id/edit(.:format) {:action=>"edit", :controller=>"users"}
+	     user GET    /users/:id(.:format)      {:action=>"show", :controller=>"users"}
+	          PUT    /users/:id(.:format)      {:action=>"update", :controller=>"users"}
+	          DELETE /users/:id(.:format)      {:action=>"destroy", :controller=>"users"}
+	
+Great, there it is.
+
+Cucumber now has a different complaint:
+
+    The action 'new' could not be found for UsersController (AbstractController::ActionNotFound)
+	
+Easy to fix. Add a `new` action to `UsersController`:
+
+    class UsersController < ApplicationController
+
+	  def new
+	    @user = User.new
+	  end
+
+	end
+
+...and a corresponding view (`./app/views/users/new.html.erb`) with a simple form:
+	
+	<%= form_for @user do |f| %>
+	  <%= f.label :login %>
+	  <%= f.text_field :login %>
+	  <%= f.label :password %>
+	  <%= f.text_field :password %>
+	  <%= f.label :password_confirmation %>
+	  <%= f.text_field :password_confirmation %>
+	  <%= submit_tag "Create" %>
+	<% end %>
+	
+Cucumber now says it can't find the create action.  Let's add it:
+
+    def create
+	  @user = User.new(params[:user])
+	  if @user.save
+        flash[:notice] = "Account registered!"
+	    redirect_to account_url
+	  else
+	    render :action => :new
+	  end
+	end
+	
+### Creating the user
+	
+Now we need to ensure that the new user does get created.
+
+---
+	
 Let's ask Rails to create us a new User Sessions controller:
 
     $ rails generate controller user_sessions
