@@ -81,6 +81,8 @@ Crack out the rails generator to make us a User model to satisfy cucumber:
     $ rails generate model User login:string crypted_password:string \
     password_salt:string persistence_token:string
 
+You can add any other fields here you need. See the Authlogic documentation for other properties it will automatically recognise and support.
+
 And rake the db:migration:
 
     $ rake db:migrate db:test:prepare
@@ -125,8 +127,113 @@ Now cucumber tells us:
 
     You must activate the Authlogic::Session::Base.controller with a controller object before creating objects (Authlogic::Session::Activation::NotActivatedError)
 	
-OK, so we need a session controller.
+OK, so we need to activate Authlogic somehow. In the real app this will be done in a controller, but for now we can just tell cucumber to activate Authlogic before it runs the tests. So add the following at the top of `authlogic_steps.rb`:
+
+    require "authlogic/test_case" 
+	
+	Before do 
+	  activate_authlogic 
+	end
+
+Now the *When* step passes! Great.
+
+### Verifying that we logged in
+
+The final step to make this feature pass is to check that the current session contains our mate Tony. Add this to `authlogic_steps.rb`:
+
+    Then /^the current user's login should be "([^"]*)"$/ do |expected_login|
+	  current_session = UserSession.find
+	  current_session.user.login.should == expected_login
+	end
+	
+We grab the current session (`UserSession.find`) and ask it for its `user`, then we check that the current user's `login` field is as expected.
+
+Now the first cucumber feature passes! Job done.
+
+This means the model layer is now working as expected. But we'd like to be able to actually *use* this new authentication system in the Rails app. So we should test the controller and view layers as well...
 
 ## 5. Session controller
 
-**TODO**
+Let's ask Rails to create us a new User Sessions controller:
+
+    $ rails generate controller user_sessions
+
+And fill in the recommended controller code from the [Authlogic example project](https://github.com/binarylogic/authlogic_example/blob/master/app/controllers/user_sessions_controller.rb):
+
+    class UserSessionsController < ApplicationController
+	  before_filter :require_no_user, :only => [:new, :create]
+	  before_filter :require_user, :only => :destroy
+
+	  def new
+	    @user_session = UserSession.new
+	  end
+
+	  def create
+	    @user_session = UserSession.new(params[:user_session])
+	    if @user_session.save
+	      flash[:notice] = "Login successful!"
+	      redirect_back_or_default account_url
+	    else
+	      render :action => :new
+	    end
+	  end
+
+	  def destroy
+	    current_user_session.destroy
+	    flash[:notice] = "Logout successful!"
+	    redirect_back_or_default new_user_session_url
+	  end
+	end
+	
+We also need to add some code to the base `ApplicationController`, again, as per the Authlogic example. **Except:** Rails 3 no longer supports setting `filter_parameter_logging` in the Application controller, you must specify it in the `config/application.rb` file instead:
+
+    # Configure sensitive parameters which will be filtered from the log file.
+    config.filter_parameters += [:password, :password_confirmation]
+
+So now the Application controller looks like this:
+
+    class ApplicationController < ActionController::Base
+	  protect_from_forgery
+
+	  helper :all
+	  helper_method :current_user_session, :current_user
+
+	  private
+	    def current_user_session
+	      return @current_user_session if defined?(@current_user_session)
+	      @current_user_session = UserSession.find
+	    end
+
+	    def current_user
+	      return @current_user if defined?(@current_user)
+	      @current_user = current_user_session && current_user_session.record
+	    end
+
+	    def require_user
+	      unless current_user
+	        store_location
+	        flash[:notice] = "You must be logged in to access this page"
+	        redirect_to new_user_session_url
+	        return false
+	      end
+	    end
+
+	    def require_no_user
+	      if current_user
+	        store_location
+	        flash[:notice] = "You must be logged out to access this page"
+	        redirect_to account_url
+	        return false
+	      end
+	    end
+
+	    def store_location
+	      session[:return_to] = request.request_uri
+	    end
+
+	    def redirect_back_or_default(default)
+	      redirect_to(session[:return_to] || default)
+	      session[:return_to] = nil
+	    end
+	end
+	
