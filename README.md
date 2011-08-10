@@ -159,6 +159,7 @@ This means the model layer is now working as expected. But we'd like to be able 
 First of all I'm going to mark our existing scenario with a `@model` tag so that I can tell cucumber to do the manual Authlogic activation for scenarios tagged `@model`:
 
 **authlogic.feature**
+    
     @model
 	Scenario: Logging in
 		Given the following user exists:
@@ -168,6 +169,7 @@ First of all I'm going to mark our existing scenario with a `@model` tag so that
 		Then the current user's login should be "Tony"
 		
 **authlogic_steps.rb**
+
 	require "authlogic/test_case" 
 	Before('@model') do 
 	  activate_authlogic 
