@@ -328,7 +328,7 @@ And a corresponding view `./app/views/user_sessions/new.html.erb`:
 
     <h1>Login</h1>
 
-	<% form_for @user_session do |f| %>
+	<%= form_for @user_session, :url => {:action => "create"}  do |f| %>
 	  <%= f.label :login %><br />
 	  <%= f.text_field :login %><br />
 	  <br />
