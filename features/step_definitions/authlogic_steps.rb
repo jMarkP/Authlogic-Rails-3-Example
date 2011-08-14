@@ -16,3 +16,10 @@ end
 Given /^there are no users$/ do
   User.all.count.should == 0
 end
+
+Then /^a new User account for "([^"]*)" should be created$/ do |user_login|
+  the_user = User.find_by_login(user_login)
+  the_user.should_not be_nil
+  the_user.login.should eq(user_login)
+end
+
