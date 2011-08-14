@@ -277,88 +277,67 @@ Now we need to ensure that the new user did get created. So let's add a step def
 	
 And as if by magic, all our steps now succeed!
 
----
+## 6. Logging in through the user interface
+
+The final stage for a basic authentication system is to allow subsequent logins for users through the Rails app user interface.
+
+So let's write a final feature to capture this.
+    
+    Scenario: Logging in through the user interface
+		Given the following user exists:
+			| login    | password   | password_confirmation |
+			| Virginia | pass       | pass                  |
+		And I am on the login page
+		And I fill in the following:
+			| Login     | Virginia   |
+			| Password  | pass       |
+		When I press "Login"
+		Then I should be on the home page
+		And the current user's login should be "Virginia"
 	
-Let's ask Rails to create us a new User Sessions controller:
+> Note: There seems to be a bug at the moment in Rails/Authlogic which means putting the above feature at the end of the file gives an error about cookies. At the moment a temporary fix that works for me is to put this new feature *before* the signing up one.
+
+The first thing we need now is a route to the login page. In `routes.rb` add the following:
+
+    match 'login' => 'user_sessions#new'
+
+Now cucumber tells us it wants a user_sessions controller. Let's oblige it: 
 
     $ rails generate controller user_sessions
 
-And fill in the recommended controller code from the [Authlogic example project](https://github.com/binarylogic/authlogic_example/blob/master/app/controllers/user_sessions_controller.rb):
+For now we just need `new` and 'create' actions:
 
     class UserSessionsController < ApplicationController
-	  before_filter :require_no_user, :only => [:new, :create]
-	  before_filter :require_user, :only => :destroy
 
 	  def new
 	    @user_session = UserSession.new
 	  end
-
+	
 	  def create
-	    @user_session = UserSession.new(params[:user_session])
+    	@user_session = UserSession.new(params[:user_session])
 	    if @user_session.save
 	      flash[:notice] = "Login successful!"
-	      redirect_back_or_default account_url
+	      redirect_to '/'
 	    else
 	      render :action => :new
 	    end
 	  end
-
-	  def destroy
-	    current_user_session.destroy
-	    flash[:notice] = "Logout successful!"
-	    redirect_back_or_default new_user_session_url
-	  end
 	end
 	
-We also need to add some code to the base `ApplicationController`, again, as per the Authlogic example. **Except:** Rails 3 no longer supports setting `filter_parameter_logging` in the Application controller, you must specify it in the `config/application.rb` file instead:
+And a corresponding view `./app/views/user_sessions/new.html.erb`:
 
-    # Configure sensitive parameters which will be filtered from the log file.
-    config.filter_parameters += [:password, :password_confirmation]
+    <h1>Login</h1>
 
-So now the Application controller looks like this:
-
-    class ApplicationController < ActionController::Base
-	  protect_from_forgery
-
-	  helper :all
-	  helper_method :current_user_session, :current_user
-
-	  private
-	    def current_user_session
-	      return @current_user_session if defined?(@current_user_session)
-	      @current_user_session = UserSession.find
-	    end
-
-	    def current_user
-	      return @current_user if defined?(@current_user)
-	      @current_user = current_user_session && current_user_session.record
-	    end
-
-	    def require_user
-	      unless current_user
-	        store_location
-	        flash[:notice] = "You must be logged in to access this page"
-	        redirect_to new_user_session_url
-	        return false
-	      end
-	    end
-
-	    def require_no_user
-	      if current_user
-	        store_location
-	        flash[:notice] = "You must be logged out to access this page"
-	        redirect_to account_url
-	        return false
-	      end
-	    end
-
-	    def store_location
-	      session[:return_to] = request.request_uri
-	    end
-
-	    def redirect_back_or_default(default)
-	      redirect_to(session[:return_to] || default)
-	      session[:return_to] = nil
-	    end
-	end
+	<% form_for @user_session do |f| %>
+	  <%= f.label :login %><br />
+	  <%= f.text_field :login %><br />
+	  <br />
+	  <%= f.label :password %><br />
+	  <%= f.password_field :password %><br />
+	  <br />
+	  <%= f.check_box :remember_me %><%= f.label :remember_me %><br />
+	  <br />
+	  <%= f.submit "Login" %>
+	<% end %>
 	
+And we're done.
